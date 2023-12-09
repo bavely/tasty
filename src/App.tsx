@@ -1,24 +1,27 @@
 import "./utils/css/App.css";
+import "./utils/css/recipe.css";
 import Recipe from "./components/Recipe";
-import { getRecipes } from "./services/APICalls";
+import { getRecipes, getNextPage } from "./services/APICalls";
 import { useState } from "react";
-import Container from "@mui/material/Container";
-import Grid from "@mui/material/Unstable_Grid2";
-import Paper from "@mui/material/Paper";
-import InputBase from "@mui/material/InputBase";
-import IconButton from "@mui/material/IconButton";
-import SearchIcon from "@mui/icons-material/Search";
-import { MouseEvent } from "react";
-import Typography from "@mui/material/Typography";
-import CircularProgress from "@mui/material/CircularProgress";
-import BottomNavigation from '@mui/material/BottomNavigation';
-const App = () => {
-  const [recipes, setRecipes] = useState([]);
-  const [userInput, setUserInput] = useState("");
-  const [msg, setMsg] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+import { RecipeType, HitType, NextType } from "./utils/Interfaces/Interface";
+import { MouseEvent, ChangeEvent } from "react";
+import InfiniteScroll from "react-infinite-scroller";
+import Skeleton from "@mui/material/Skeleton";
+import Stack from "@mui/material/Stack";
+import "animate.css";
+import gif from "./utils/imgs/vsgif_com__.2517947.gif";
+import { IoIosSearch } from "react-icons/io";
+function App() {
+  const [recipes, setRecipes] = useState<RecipeType[]>([]);
+  const [userInput, setUserInput] = useState<string>("");
+  const [msg, setMsg] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [next, setNext] = useState<NextType>({
+    href: "",
+    title: "",
+  });
+  const [count, setCount] = useState<number>(0);
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     setUserInput(event.target.value);
   };
 
@@ -26,6 +29,7 @@ const App = () => {
     event.preventDefault();
     setRecipes([]);
     setMsg("");
+    setCount(0);
     setLoading(true);
     if (userInput === "") {
       setMsg("Please type something!");
@@ -35,84 +39,157 @@ const App = () => {
     setMsg("");
     getRecipes(userInput)
       .then((res) => {
-        res?.data?.count && res.data.count > 0
-          ? setMsg(`${res.data.count} results found`)
-          : setMsg("No Results");
-        setRecipes(
-          res.data.hits.map(
-            (hit: { recipe: { name: string; ingredients: string[] } }) =>
-              hit.recipe
-          )
-        );
+        if (res?.data?.count && res.data.count > 0) {
+          setMsg(`${res.data.count} results found`);
+          setCount(res.data.count);
+        } else {
+          setMsg("No Results");
+        }
+        res?.data?._links?.next && setNext(res.data._links.next);
+        setRecipes(res.data.hits.map((hit: HitType) => hit.recipe));
         setLoading(false);
       })
       .catch((err) => {
-        setMsg("Something went wrong!");
+        console.log(err);
+        setMsg(err.response.data.message);
         setLoading(false);
+        setRecipes([]);
+        setCount(0);
       });
   };
 
+  const handleNext = () => {
+    setTimeout(() => {
+      setLoading(true);
+      getNextPage(next.href)
+        .then((res) => {
+          res?.data?.count && res.data.count > 0
+            ? setMsg(`${res.data.count} results found`)
+            : setMsg("No Results");
+          res?.data?._links?.next && setNext(res.data._links.next);
+          setRecipes([
+            ...recipes,
+            ...res.data.hits.map((hit: HitType) => hit.recipe),
+          ]);
+          setLoading(false);
+        })
+        .catch((err) => {
+          console.log(err);
+          setMsg(err.response.data.message);
+          setRecipes([]);
+          setLoading(false);
+          setCount(0);
+        });
+    }, 1500);
+  };
   return (
-    <div className="App">
-      <h5>Tasty</h5>
-      <Container sx={{ py: 8 }}>
-        <Grid container spacing={2}>
-          <Grid xs={8}>
-            <Paper
-              sx={{
-                p: "2px 4px",
-                display: "flex",
-                alignItems: "center",
-                width: 400,
-                float: "right",
-                alignSelf: "center",
-              }}
-            >
-              <InputBase
-                sx={{ ml: 1, flex: 1 }}
-                placeholder="Search Tasty Dish!"
-                // inputProps={{ 'aria-label': 'search google maps' }}
-                value={userInput}
-                onChange={handleChange}
-              />
-              <IconButton
-                type="button"
-                sx={{ p: "10px" }}
-                aria-label="search"
-                onClick={handleSearch}
-              >
-                <SearchIcon />
-              </IconButton>
-            </Paper>
-          </Grid>
-        </Grid>
-        <Grid xs={4}>
-          <Typography>{msg}</Typography>
-        </Grid>
-        <ul>
-          {loading && <CircularProgress />}
-          <Grid container spacing={2}>
-            {recipes.map((recipe, index) => (
-              <Grid key={index} xs={4}>
-                {" "}
-                <Recipe item={recipe} />
-              </Grid>
+    <div className="app-container">
+      <div className="header">
+        <div className="title-container">
+          <h1>Tasty</h1>
+        </div>
+        <div className="search-container">
+          <input
+            type="text"
+            placeholder="Search for recipes"
+            value={userInput}
+            onChange={handleChange}
+          />
+          <button onClick={handleSearch} className="search-button">
+            {/* <span><SearchSharpIcon /></span> */}
+            <IoIosSearch  size={30}  />
+          </button>
+        </div>
+
+        <div className="message-container">
+          <p>{msg}</p>
+        </div>
+      </div>
+      <div>
+        
+        <InfiniteScroll
+          className="recipes-container"
+          pageStart={0}
+          loadMore={handleNext}
+          hasMore={recipes.length < count}
+          loader={
+            <div className="loader recipes-container" key={0}>
+              <div className="recipe-card">
+                <Stack spacing={1} sx={{ paddingTop: "1rem" }}>
+                <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                  <Skeleton variant="rectangular" width={"100%"} height={200} />
+                  <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                  <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                  <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                </Stack>
+              </div>
+              <div className="recipe-card">
+                <Stack spacing={1} sx={{ paddingTop: "1rem" }}>
+                <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                  <Skeleton variant="rectangular" width={"100%"} height={200} />
+                  <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                  <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                  <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                </Stack>
+              </div>
+              <div className="recipe-card">
+                <Stack spacing={1} sx={{ paddingTop: "1rem" }}>
+                <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                  <Skeleton variant="rectangular" width={"100%"} height={200} />
+                  <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                  <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                  <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                </Stack>
+              </div>
+              <div className="recipe-card">
+                <Stack spacing={1} sx={{ paddingTop: "1rem" }}>
+                <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                  <Skeleton variant="rectangular" width={"100%"} height={200} />
+                  <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                  <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                  <Skeleton variant="text" sx={{ fontSize: "1rem" }} />
+                </Stack>
+              </div>
+            </div>
+          }>
+          {loading && <img src={gif} alt="loader" />}
+          {recipes
+            .sort((a, b) => b.calories - a.calories)
+            .map((recipe: RecipeType, index) => (
+             <Recipe key={index} recipe={recipe} />
             ))}
-          </Grid>
-        </ul>
+        </InfiniteScroll>
 
-      </Container>
-
-            
-          <div className="footer row">
-      <div className='text-center pt-3 pb-3' style={{ backgroundColor: 'rgba(0, 0, 0, 0.09)' , position: 'fixed', bottom: 0, width: '100%'}}>
-        © 2023 Bavely Tawfik
       </div>
+      <div className="footer row">
+        <div
+          className="text-center pt-3 pb-3"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            position: "fixed",
+            bottom: 0,
+            width: "100%",
+          }}>
+          <p
+            style={{
+              fontSize: "0.8rem",
+              fontWeight: "bold",
+              color: "white",
+              alignSelf: "center",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+            }}>
+            © 2023 Bavely Tawfik
+          </p>
+        </div>
       </div>
-          {/* </Typography>
-        </BottomNavigation> */}
     </div>
   );
-};
+}
 
 export default App;

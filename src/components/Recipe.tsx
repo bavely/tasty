@@ -1,77 +1,65 @@
-import Card from "@mui/material/Card";
-import CardHeader from "@mui/material/CardHeader";
-import CardMedia from "@mui/material/CardMedia";
-import CardContent from "@mui/material/CardContent";
-import CardActions from "@mui/material/CardActions";
-import Typography from "@mui/material/Typography";
-import "../utils/css/Recipe.scss"
-import { Button } from "@mui/material";
-const Recipe = (props: {
-  item: {
-    label: string;
-    ingredientLines: string[];
-    image: string;
-    healthLabels: string[];
-    url: string;
-    calories: number;
-  };
-}) => {
-  const { label, ingredientLines, image, calories } = props.item;
+import { useState } from "react";
+import { HitType } from "../utils/Interfaces/Interface";
+import "../utils/css/recipe.css";
+const Recipe = (props: HitType) => {
+  const { label, ingredientLines, image, calories, url, totalDaily } = props.recipe;
+  const [expanded, setExpanded] = useState(false);
 
   return (
-    <Card sx={{ maxWidth: 345 }} >
-      <CardHeader
-        title={label}
-        subheader={`Calories: ${Math.round(calories)}`}
-        sx={{ minHeight: "150px", maxHeight: "150px" }}
-      />
-      <CardMedia component="img" height="194" image={image} alt={label} />
-      <CardContent>
-        <Typography variant="body1" color="">
-          Ingredients:
-        </Typography>
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          style={{
-            minHeight: "200px",
-            maxHeight: "200px",
-            overflow: "auto",
-            paddingBottom: "30px",
-            marginTop: "10px",
-          }}
-        >
-          {ingredientLines.map((line, index) => (
-            <li key={index} style={{ listStyleType: "none" }}>
-              {line}
-            </li>
-          ))}
-        </Typography>
-      </CardContent>
-      <CardActions disableSpacing sx={{ float: "right" }}>
-        <Button
-          href={props.item.url}
-          target="_blank"
-          rel="noreferrer"
-          variant="outlined"
-          className="recipe-card"
-        >
-          View More...
-        </Button>
-      </CardActions>
-    </Card>
+    <div
+      className="recipe-card"
+      onMouseEnter={() => setExpanded(true)}
+      onMouseLeave={() => setExpanded(false)}
+    >
+      <div className="recipe-header">
+        <div className="popover__wrapper">
+          <h3 className="recipe-title ">{label}</h3>
+          <div className="popover__content">
+            <p className="popover__message">{label}</p>
+          </div>
+        </div>
+        <p>
+          <span className="calories">Calories:</span> {Math.round(calories)}
+        </p>
+      </div>
+      <div>
+      <div className="flip-card">
+  <div className="flip-card-inner">
+    <div className="flip-card-front">
+        <img src={image} alt="recipe" className="recipe-image" />
+        </div>
+    <div className="flip-card-back">
+      <h3>Nutrition Facts:</h3>
+      {Object.keys(totalDaily).slice(0, 6).map((key, index) => (
+        <p key={index}>
+          {key}: {Math.floor(totalDaily[key].quantity) } {totalDaily[key].unit}
+        </p>
+      ))}
+    </div>
+  </div>
+</div>
+      </div>
+      <div
+        className="recipe-info"
+        style={{
+          maxHeight: expanded ? "15rem" : 0,
+          overflow: expanded ? "auto" : "hidden",
+          transition: "0.5s max-height",
+          WebkitTransition: "0.5s max-height ",
+          MozTransition: "0.5s max-height",
+          OTransition: "0.5s max-height",
+
+        }}
+      >
+        {ingredientLines.map((ingredient, index) => (
+          <p key={index}>{ingredient}</p>
+        ))}
+        <a href={url} target="_blank" rel="noopener noreferrer">
+          View Recipe
+        </a>
+      </div>
+    </div>
   );
 };
 
 export default Recipe;
-
-// const Recipe: React.FC<{item: {name: string, ingredients: string[]}}> = (props) => {
-
-//     const {name, ingredients} = props.item
-
-//   return (
-//     <div>{name}</div>
-//   )
-// }
-
-// export default Recipe
